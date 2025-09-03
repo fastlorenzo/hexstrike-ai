@@ -1,0 +1,27 @@
+{
+  "mcpServers": {
+    "hexstrike-ai-small": {
+      "command": "python3",
+      "args": [
+        "/path/to/hexstrike-ai/hexstrike_mcp.py",
+        "--server",
+        "http://localhost:8888",
+        "--small-context-mode"
+      ],
+      "description": "HexStrike AI v6.0 - Small Context Mode for Local LLMs (<4K tokens)",
+      "timeout": 300,
+      "disabled": false
+    },
+    "hexstrike-ai-full": {
+      "command": "python3",
+      "args": [
+        "/path/to/hexstrike-ai/hexstrike_mcp.py",
+        "--server",
+        "http://localhost:8888"
+      ],
+      "description": "HexStrike AI v6.0 - Full Mode (150+ tools, ~20K tokens)",
+      "timeout": 300,
+      "disabled": true
+    }
+  }
+}

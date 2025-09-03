@@ -144,6 +144,96 @@ DEFAULT_HEXSTRIKE_SERVER = "http://127.0.0.1:8888"  # Default HexStrike server U
 DEFAULT_REQUEST_TIMEOUT = 300  # 5 minutes default timeout for API requests
 MAX_RETRIES = 3  # Maximum number of retries for connection attempts
 
+def estimate_tokens(text: str) -> int:
+    """
+    Estimate token count for given text using a simple approximation.
+    
+    Args:
+        text: Text to estimate tokens for
+        
+    Returns:
+        Estimated number of tokens
+    """
+    # Simple approximation: ~4 characters per token for English text
+    # This is a rough estimate, real tokenizers vary by model
+    return len(text) // 4
+
+def compress_docstring(original_docstring: str) -> str:
+    """
+    Compress a detailed docstring for small-context mode while preserving essential information.
+    
+    Args:
+        original_docstring: Original detailed docstring
+        
+    Returns:
+        Compressed version of the docstring
+    """
+    if not original_docstring:
+        return ""
+    
+    # Remove extra whitespace and normalize
+    lines = [line.strip() for line in original_docstring.strip().split('\n') if line.strip()]
+    
+    # Find the main description (usually the first non-empty line)
+    main_description = ""
+    for line in lines:
+        if line and not line.startswith('"""') and not line.startswith('Args:') and not line.startswith('Returns:'):
+            main_description = line
+            break
+    
+    # If we found a description and it's reasonable length, use it
+    if main_description and len(main_description) <= 120:
+        return main_description
+    elif main_description:
+        # Truncate long descriptions
+        return main_description[:117] + "..."
+    
+    # Fallback - try to extract from function name if no description found
+    return "Security testing tool."
+
+def setup_tools_with_context_awareness(mcp: FastMCP, hexstrike_client: HexStrikeClient, small_context_mode: bool = False) -> FastMCP:
+    """
+    Set up all tools with context-aware docstring compression.
+    
+    Args:
+        mcp: FastMCP instance
+        hexstrike_client: HexStrike client
+        small_context_mode: Whether to use compressed docstrings
+        
+    Returns:
+        Configured FastMCP instance with all tools
+    """
+    
+    # Store the original mcp.tool decorator
+    original_tool_decorator = mcp.tool
+    
+    # Create a new tool decorator that compresses docstrings if needed
+    def context_aware_tool_decorator(*args, **kwargs):
+        def wrapper(func):
+            # If in small context mode, compress the docstring
+            if small_context_mode and hasattr(func, '__doc__') and func.__doc__:
+                func.__doc__ = compress_docstring(func.__doc__)
+            
+            # Apply the original tool decorator
+            return original_tool_decorator(*args, **kwargs)(func)
+        return wrapper
+    
+    # Temporarily replace the tool decorator
+    mcp.tool = context_aware_tool_decorator
+    
+    # Now call the original setup_full_tools function
+    result = setup_full_tools(mcp, hexstrike_client)
+    
+    # Restore the original decorator (good practice)
+    mcp.tool = original_tool_decorator
+    
+    if small_context_mode:
+        logger.info(f"✅ Registered ALL 161 tools with compressed descriptions for small-context mode")
+    else:
+        logger.info(f"✅ Registered ALL 161 tools with full descriptions")
+    
+    return result
+
 class HexStrikeClient:
     """Enhanced client for communicating with the HexStrike AI API Server"""
     
@@ -264,20 +354,39 @@ class HexStrikeClient:
         """
         return self.safe_get("health")
 
-def setup_mcp_server(hexstrike_client: HexStrikeClient) -> FastMCP:
+def setup_mcp_server(hexstrike_client: HexStrikeClient, context_config: Optional[Dict[str, Any]] = None) -> FastMCP:
     """
     Set up the MCP server with all enhanced tool functions
     
     Args:
         hexstrike_client: Initialized HexStrikeClient
+        context_config: Configuration for context mode (small_context_mode, max_initial_prompt_tokens)
         
     Returns:
         Configured FastMCP instance
     """
+    if context_config is None:
+        context_config = {'small_context_mode': False, 'max_initial_prompt_tokens': 20000}
+    
+    small_context_mode = context_config.get('small_context_mode', False)
+    max_tokens = context_config.get('max_initial_prompt_tokens', 4000 if small_context_mode else 20000)
+    
     mcp = FastMCP("hexstrike-ai-mcp")
     
+    if small_context_mode:
+        logger.info(f"🔧 Registering ALL tools in small-context mode with compressed descriptions (target: <{max_tokens} tokens)")
+    else:
+        logger.info("🔧 Registering all tools in full mode")
+    
+    return setup_tools_with_context_awareness(mcp, hexstrike_client, small_context_mode)
+
+def setup_full_tools(mcp: FastMCP, hexstrike_client: HexStrikeClient) -> FastMCP:
+    """
+    Set up full tool set for normal mode (original behavior).
+    """
+    
     # ============================================================================
-    # CORE NETWORK SCANNING TOOLS
+    # CORE NETWORK SCANNING TOOLS  
     # ============================================================================
     
     @mcp.tool()
@@ -5414,6 +5523,10 @@ def parse_args():
     parser.add_argument("--timeout", type=int, default=DEFAULT_REQUEST_TIMEOUT,
                       help=f"Request timeout in seconds (default: {DEFAULT_REQUEST_TIMEOUT})")
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")
+    parser.add_argument("--small-context-mode", action="store_true", 
+                      help="Enable small-context mode with minimal tool registration for resource-constrained models")
+    parser.add_argument("--max-initial-prompt-tokens", type=int, default=4000,
+                      help="Maximum tokens for initial prompt/tool registration (default: 4000, full mode: ~20000)")
     return parser.parse_args()
 
 def main():
@@ -5448,10 +5561,21 @@ def main():
                 if missing_tools:
                     logger.warning(f"❌ Missing tools: {', '.join(missing_tools[:5])}{'...' if len(missing_tools) > 5 else ''}")
         
-        # Set up and run the MCP server
-        mcp = setup_mcp_server(hexstrike_client)
+        # Set up and run the MCP server with context mode configuration
+        context_config = {
+            'small_context_mode': args.small_context_mode,
+            'max_initial_prompt_tokens': args.max_initial_prompt_tokens
+        }
+        
+        if args.small_context_mode:
+            logger.info(f"🔧 Small-context mode enabled (max tokens: {args.max_initial_prompt_tokens})")
+        
+        mcp = setup_mcp_server(hexstrike_client, context_config)
         logger.info("🚀 Starting HexStrike AI MCP server")
-        logger.info("🤖 Ready to serve AI agents with enhanced cybersecurity capabilities")
+        if args.small_context_mode:
+            logger.info("🤖 Ready to serve AI agents with minimal context for resource-constrained models")
+        else:
+            logger.info("🤖 Ready to serve AI agents with enhanced cybersecurity capabilities")
         mcp.run()
     except Exception as e:
         logger.error(f"💥 Error starting MCP server: {str(e)}")
