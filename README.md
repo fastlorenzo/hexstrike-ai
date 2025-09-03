@@ -255,6 +255,63 @@ Configure VS Code settings in `.vscode/settings.json`:
 
 ---
 
+## 🔧 Small-Context Mode for Local LLMs
+
+**NEW in v6.0**: HexStrike AI now supports small-context mode for resource-constrained local models!
+
+### Why Small-Context Mode?
+
+Local LLMs often have limited context windows that can't handle the full ~20,000 token registration of all 150+ tools. Small-context mode reduces initial token usage to **<4,000 tokens** while maintaining core functionality.
+
+### Enable Small-Context Mode
+
+```bash
+# Enable small-context mode with default 4,000 token limit
+python3 hexstrike_mcp.py --small-context-mode
+
+# Custom token limit for very constrained models
+python3 hexstrike_mcp.py --small-context-mode --max-initial-prompt-tokens 2000
+```
+
+### Integration with Small-Context Mode
+
+#### Claude Desktop with Small-Context Mode
+```json
+{
+  "mcpServers": {
+    "hexstrike-ai": {
+      "command": "python3",
+      "args": [
+        "/path/to/hexstrike-ai/hexstrike_mcp.py",
+        "--server",
+        "http://localhost:8888",
+        "--small-context-mode"
+      ],
+      "description": "HexStrike AI v6.0 - Small Context Mode for Local LLMs"
+    }
+  }
+}
+```
+
+### Essential Tools in Small-Context Mode (10 tools)
+
+| Tool | Purpose |
+|------|---------|
+| `nmap_scan` | Network scanning |
+| `intelligent_smart_scan` | AI-driven scanning |
+| `gobuster_scan` | Directory enumeration |
+| `nuclei_scan` | Vulnerability detection |
+| `sqlmap_scan` | SQL injection testing |
+| `execute_command` | Direct command execution |
+| `select_optimal_tools_ai` | AI tool selection |
+| `optimize_tool_parameters_ai` | AI parameter optimization |
+| `get_process_dashboard` | System monitoring |
+| `format_tool_output_visual` | Output formatting |
+
+📖 **[Complete Small-Context Mode Guide](SMALL_CONTEXT_MODE.md)**
+
+---
+
 ## Features
 
 ### Security Tools Arsenal
