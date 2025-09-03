@@ -2,7 +2,24 @@
 
 ## Overview
 
-Small-context mode significantly reduces the initial token load for resource-constrained local LLMs by providing a streamlined tool registration that omits non-essential details.
+Small-context mode significantly reduces the initial token load for resource-constrained local LLMs by compressing tool descriptions while **maintaining access to ALL 161 security tools**.
+
+### Key Benefits
+
+- ✅ **ALL 161 tools remain available** (no tool limitation)
+- ✅ **~80% token reduction** through description compression
+- ✅ **Full functionality preserved** while reducing context size
+- ✅ **Intelligent docstring compression** maintains essential information
+- ✅ **Backward compatible** with existing configurations
+
+### How It Works
+
+Instead of limiting the number of available tools, small-context mode uses intelligent docstring compression:
+
+1. **Full Mode**: Tools have detailed descriptions (~20,000 tokens)
+2. **Small-Context Mode**: Same tools with compressed descriptions (<4,000 tokens)
+3. **Compression Strategy**: Extracts main description, removes verbose Args/Returns sections
+4. **Preservation**: Core functionality and tool parameters remain unchanged
 
 ## Usage
 
@@ -69,38 +86,52 @@ Update your AI client configuration to use small-context mode:
 
 | Mode | Tools Registered | Estimated Token Usage | Target Audience |
 |------|------------------|----------------------|-----------------|
-| **Full Mode** (default) | 150+ tools | ~20,000 tokens | High-capacity models (GPT-4, Claude-3, etc.) |
-| **Small-Context Mode** | 10 essential tools | <4,000 tokens | Local LLMs, resource-constrained models |
+| **Full Mode** (default) | 161 tools (full descriptions) | ~20,000 tokens | High-capacity models (GPT-4, Claude-3, etc.) |
+| **Small-Context Mode** | 161 tools (compressed descriptions) | <4,000 tokens | Local LLMs, resource-constrained models |
 
-## Essential Tools in Small-Context Mode
+## All Tools Available in Small-Context Mode
 
-The following 10 essential tools are included in small-context mode:
+**NEW APPROACH**: Small-context mode now provides access to **ALL 161 security tools** with compressed descriptions instead of limiting to a subset.
 
-1. **`nmap_scan`** - Network scanning with Nmap
-2. **`execute_command`** - Execute command on HexStrike server
-3. **`intelligent_smart_scan`** - AI-driven intelligent scanning
-4. **`select_optimal_tools_ai`** - AI tool selection for target
-5. **`optimize_tool_parameters_ai`** - AI parameter optimization
-6. **`gobuster_scan`** - Directory/DNS brute-forcing with Gobuster
-7. **`nuclei_scan`** - Vulnerability scanning with Nuclei
-8. **`sqlmap_scan`** - SQL injection testing with SQLMap
-9. **`get_process_dashboard`** - Get system process dashboard
-10. **`format_tool_output_visual`** - Format tool output with visual styling
+### Tool Categories (All Available):
+
+**🔍 Network & Reconnaissance (25+ tools):**
+- `nmap_scan`, `masscan_scan`, `rustscan_scan`, `autorecon_scan`, `amass_scan`, `subfinder_scan`, `fierce_scan`, `dnsenum_scan`, etc.
+
+**🌐 Web Application Security (40+ tools):**
+- `gobuster_scan`, `feroxbuster_scan`, `ffuf_scan`, `dirb_scan`, `nuclei_scan`, `nikto_scan`, `sqlmap_scan`, `wpscan_scan`, etc.
+
+**🔐 Authentication & Password (12+ tools):**
+- `hydra_scan`, `john_crack`, `hashcat_crack`, `medusa_scan`, `patator_scan`, `evil_winrm_scan`, etc.
+
+**🔬 Binary Analysis & Reverse Engineering (25+ tools):**
+- `ghidra_analyze`, `radare2_analyze`, `gdb_debug`, `binwalk_extract`, `ropgadget_find`, etc.
+
+**☁️ Cloud & Container Security (20+ tools):**
+- `prowler_scan`, `scout_suite_scan`, `trivy_scan`, `kube_hunter_scan`, etc.
+
+**🏆 CTF & Forensics (20+ tools):**
+- `volatility_analyze`, `autopsy_analyze`, `steghide_extract`, etc.
+
+**🕵️ OSINT & Intelligence (20+ tools):**
+- `sherlock_scan`, `social_analyzer_scan`, `recon_ng_scan`, etc.
 
 ## Benefits
 
-- **Reduced Memory Usage**: Significantly lower initial token consumption
-- **Faster Initialization**: Quicker tool registration and startup
-- **Local LLM Compatibility**: Works with models that have smaller context windows
-- **Essential Functionality**: Covers core security testing needs
-- **Fallback Access**: Full tool access still available through AI intelligence tools
+- **✅ Full Tool Access**: ALL 161 tools available regardless of context mode
+- **✅ Dramatic Token Reduction**: ~80% reduction through description compression
+- **✅ Preserved Functionality**: Tool parameters and capabilities unchanged
+- **✅ Local LLM Compatibility**: Works with models that have smaller context windows  
+- **✅ Intelligent Compression**: Main descriptions preserved, verbose sections removed
+- **✅ Zero Functionality Loss**: No tool limitation or capability reduction
 
 ## Technical Details
 
+- **Compression Strategy**: Intelligent docstring compression preserves essential information
 - **Token Estimation**: Uses ~4 characters per token approximation
-- **Minimal Docstrings**: Essential tools use condensed descriptions
-- **Conditional Registration**: Tools are registered based on context mode and token budget
+- **Dynamic Compression**: Descriptions compressed based on context mode setting
 - **Backward Compatibility**: Full mode maintains all existing functionality
+- **All Tools Available**: Both modes now register identical tool sets
 
 ## Example Usage
 

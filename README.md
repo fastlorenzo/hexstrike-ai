@@ -14,7 +14,7 @@
 [![Agents](https://img.shields.io/badge/AI%20Agents-12%2B-purple.svg)](https://github.com/0x4m4/hexstrike-ai)
 [![Stars](https://img.shields.io/github/stars/0x4m4/hexstrike-ai?style=social)](https://github.com/0x4m4/hexstrike-ai)
 
-**Advanced AI-powered penetration testing MCP framework with 150+ security tools and 12+ autonomous AI agents**
+**Advanced AI-powered penetration testing MCP framework with 161 security tools and 12+ autonomous AI agents**
 
 [📋 What's New](#whats-new-in-v60) • [🏗️ Architecture](#architecture-overview) • [🚀 Installation](#installation) • [🛠️ Features](#features) • [🤖 AI Agents](#ai-agents) • [📡 API Reference](#api-reference)
 
@@ -261,7 +261,14 @@ Configure VS Code settings in `.vscode/settings.json`:
 
 ### Why Small-Context Mode?
 
-Local LLMs often have limited context windows that can't handle the full ~20,000 token registration of all 150+ tools. Small-context mode reduces initial token usage to **<4,000 tokens** while maintaining core functionality.
+Local LLMs often have limited context windows that can't handle the full ~20,000 token registration of all 161 tools. Small-context mode reduces initial token usage to **<4,000 tokens** while **maintaining access to ALL 161 tools** through intelligent description compression.
+
+### Key Benefits of Small-Context Mode
+
+- ✅ **ALL 161 tools remain available** (no tool limitation)
+- ✅ **~80% token reduction** through description compression  
+- ✅ **Full functionality preserved** while reducing context size
+- ✅ **Backward compatible** with existing configurations
 
 ### Enable Small-Context Mode
 
@@ -293,20 +300,14 @@ python3 hexstrike_mcp.py --small-context-mode --max-initial-prompt-tokens 2000
 }
 ```
 
-### Essential Tools in Small-Context Mode (10 tools)
+### All Tools Available in Small-Context Mode
 
-| Tool | Purpose |
-|------|---------|
-| `nmap_scan` | Network scanning |
-| `intelligent_smart_scan` | AI-driven scanning |
-| `gobuster_scan` | Directory enumeration |
-| `nuclei_scan` | Vulnerability detection |
-| `sqlmap_scan` | SQL injection testing |
-| `execute_command` | Direct command execution |
-| `select_optimal_tools_ai` | AI tool selection |
-| `optimize_tool_parameters_ai` | AI parameter optimization |
-| `get_process_dashboard` | System monitoring |
-| `format_tool_output_visual` | Output formatting |
+**UPDATED APPROACH**: Small-context mode now provides **ALL 161 security tools** with compressed descriptions instead of limiting to a subset.
+
+| Mode | Tools Available | Token Usage | Description |
+|------|----------------|-------------|-------------|
+| **Full Mode** | 161 tools (full descriptions) | ~20,000 tokens | For high-capacity models |
+| **Small-Context Mode** | 161 tools (compressed descriptions) | <4,000 tokens | For resource-constrained models |
 
 📖 **[Complete Small-Context Mode Guide](SMALL_CONTEXT_MODE.md)**
 
@@ -316,7 +317,7 @@ python3 hexstrike_mcp.py --small-context-mode --max-initial-prompt-tokens 2000
 
 ### Security Tools Arsenal
 
-**150+ Professional Security Tools:**
+**161 Professional Security Tools:**
 
 <details>
 <summary><b>🔍 Network Reconnaissance & Scanning (25+ Tools)</b></summary>

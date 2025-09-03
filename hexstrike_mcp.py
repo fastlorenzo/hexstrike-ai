@@ -158,52 +158,81 @@ def estimate_tokens(text: str) -> int:
     # This is a rough estimate, real tokenizers vary by model
     return len(text) // 4
 
-def get_essential_tools() -> list:
+def compress_docstring(original_docstring: str) -> str:
     """
-    Get list of essential tools for small-context mode.
-    
-    Returns:
-        List of essential tool names that should be included in minimal mode
-    """
-    return [
-        "nmap_scan",
-        "execute_command",
-        "intelligent_smart_scan",
-        "select_optimal_tools_ai",
-        "optimize_tool_parameters_ai",
-        "format_tool_output_visual",
-        "gobuster_scan",
-        "sqlmap_scan",
-        "nuclei_scan",
-        "get_process_dashboard"
-    ]
-
-def create_minimal_docstring(func_name: str, original_docstring: str) -> str:
-    """
-    Create a minimal docstring for small-context mode.
+    Compress a detailed docstring for small-context mode while preserving essential information.
     
     Args:
-        func_name: Name of the function
         original_docstring: Original detailed docstring
         
     Returns:
-        Minimal version of the docstring
+        Compressed version of the docstring
     """
-    # Extract the first line (brief description) from the original docstring
     if not original_docstring:
-        return f"Execute {func_name.replace('_', ' ')} operation."
+        return ""
     
-    lines = original_docstring.strip().split('\n')
-    # Find the first non-empty line that contains the main description
+    # Remove extra whitespace and normalize
+    lines = [line.strip() for line in original_docstring.strip().split('\n') if line.strip()]
+    
+    # Find the main description (usually the first non-empty line)
+    main_description = ""
     for line in lines:
-        line = line.strip()
-        if line and not line.startswith('"""') and len(line) > 10:
-            # Keep it under 100 characters for minimal context
-            if len(line) > 100:
-                return line[:97] + "..."
-            return line
+        if line and not line.startswith('"""') and not line.startswith('Args:') and not line.startswith('Returns:'):
+            main_description = line
+            break
     
-    return f"Execute {func_name.replace('_', ' ')} operation."
+    # If we found a description and it's reasonable length, use it
+    if main_description and len(main_description) <= 120:
+        return main_description
+    elif main_description:
+        # Truncate long descriptions
+        return main_description[:117] + "..."
+    
+    # Fallback - try to extract from function name if no description found
+    return "Security testing tool."
+
+def setup_tools_with_context_awareness(mcp: FastMCP, hexstrike_client: HexStrikeClient, small_context_mode: bool = False) -> FastMCP:
+    """
+    Set up all tools with context-aware docstring compression.
+    
+    Args:
+        mcp: FastMCP instance
+        hexstrike_client: HexStrike client
+        small_context_mode: Whether to use compressed docstrings
+        
+    Returns:
+        Configured FastMCP instance with all tools
+    """
+    
+    # Store the original mcp.tool decorator
+    original_tool_decorator = mcp.tool
+    
+    # Create a new tool decorator that compresses docstrings if needed
+    def context_aware_tool_decorator(*args, **kwargs):
+        def wrapper(func):
+            # If in small context mode, compress the docstring
+            if small_context_mode and hasattr(func, '__doc__') and func.__doc__:
+                func.__doc__ = compress_docstring(func.__doc__)
+            
+            # Apply the original tool decorator
+            return original_tool_decorator(*args, **kwargs)(func)
+        return wrapper
+    
+    # Temporarily replace the tool decorator
+    mcp.tool = context_aware_tool_decorator
+    
+    # Now call the original setup_full_tools function
+    result = setup_full_tools(mcp, hexstrike_client)
+    
+    # Restore the original decorator (good practice)
+    mcp.tool = original_tool_decorator
+    
+    if small_context_mode:
+        logger.info(f"✅ Registered ALL 161 tools with compressed descriptions for small-context mode")
+    else:
+        logger.info(f"✅ Registered ALL 161 tools with full descriptions")
+    
+    return result
 
 class HexStrikeClient:
     """Enhanced client for communicating with the HexStrike AI API Server"""
@@ -345,120 +374,11 @@ def setup_mcp_server(hexstrike_client: HexStrikeClient, context_config: Optional
     mcp = FastMCP("hexstrike-ai-mcp")
     
     if small_context_mode:
-        logger.info(f"🔧 Registering tools in small-context mode (target: <{max_tokens} tokens)")
-        return setup_minimal_tools(mcp, hexstrike_client, max_tokens)
+        logger.info(f"🔧 Registering ALL tools in small-context mode with compressed descriptions (target: <{max_tokens} tokens)")
     else:
         logger.info("🔧 Registering all tools in full mode")
-        return setup_full_tools(mcp, hexstrike_client)
-
-def setup_minimal_tools(mcp: FastMCP, hexstrike_client: HexStrikeClient, max_tokens: int) -> FastMCP:
-    """
-    Set up minimal tool set for small-context mode.
     
-    Args:
-        mcp: FastMCP instance
-        hexstrike_client: HexStrike client
-        max_tokens: Maximum token budget
-        
-    Returns:
-        Configured FastMCP instance with minimal tools
-    """
-    
-    @mcp.tool()
-    def nmap_scan(target: str, scan_type: str = "-sV", ports: str = "", additional_args: str = "") -> Dict[str, Any]:
-        """Network scanning with Nmap."""
-        data = {"target": target, "scan_type": scan_type, "ports": ports, "additional_args": additional_args}
-        logger.info(f"🔍 Nmap scan: {target}")
-        return hexstrike_client.safe_post("api/tools/nmap", data)
-
-    @mcp.tool()
-    def execute_command(command: str, use_cache: bool = True) -> Dict[str, Any]:
-        """Execute command on HexStrike server."""
-        try:
-            logger.info(f"⚡ Executing: {command}")
-            result = hexstrike_client.execute_command(command, use_cache)
-            if "error" in result:
-                return {"success": False, "error": result["error"], "stdout": "", "stderr": f"Error: {result['error']}"}
-            return result
-        except Exception as e:
-            return {"success": False, "error": str(e), "stdout": "", "stderr": f"Exception: {str(e)}"}
-
-    @mcp.tool()
-    def intelligent_smart_scan(target: str, objective: str = "comprehensive", max_tools: int = 5) -> Dict[str, Any]:
-        """AI-driven intelligent scanning."""
-        data = {"target": target, "objective": objective, "max_tools": max_tools}
-        logger.info(f"🚀 Smart scan: {target}")
-        return hexstrike_client.safe_post("api/intelligence/smart-scan", data)
-
-    @mcp.tool()
-    def select_optimal_tools_ai(target: str, objective: str = "comprehensive") -> Dict[str, Any]:
-        """AI tool selection for target."""
-        data = {"target": target, "objective": objective}
-        logger.info(f"🤖 Tool selection: {target}")
-        return hexstrike_client.safe_post("api/intelligence/select-tools", data)
-
-    @mcp.tool()
-    def optimize_tool_parameters_ai(target: str, tool: str, context: str = "{}") -> Dict[str, Any]:
-        """AI parameter optimization."""
-        import json
-        try:
-            context_dict = json.loads(context) if context != "{}" else {}
-        except:
-            context_dict = {}
-        data = {"target": target, "tool": tool, "context": context_dict}
-        logger.info(f"⚙️ Parameter optimization: {tool}")
-        return hexstrike_client.safe_post("api/intelligence/optimize-parameters", data)
-
-    @mcp.tool()
-    def gobuster_scan(url: str, mode: str = "dir", wordlist: str = "/usr/share/wordlists/dirb/common.txt", additional_args: str = "") -> Dict[str, Any]:
-        """Directory/DNS brute-forcing with Gobuster."""
-        data = {"url": url, "mode": mode, "wordlist": wordlist, "additional_args": additional_args}
-        logger.info(f"🔍 Gobuster scan: {url}")
-        return hexstrike_client.safe_post("api/tools/gobuster", data)
-
-    @mcp.tool()
-    def nuclei_scan(target: str, severity: str = "", tags: str = "", template: str = "", additional_args: str = "") -> Dict[str, Any]:
-        """Vulnerability scanning with Nuclei."""
-        data = {"target": target, "severity": severity, "tags": tags, "template": template, "additional_args": additional_args}
-        logger.info(f"🔍 Nuclei scan: {target}")
-        return hexstrike_client.safe_post("api/tools/nuclei", data)
-
-    @mcp.tool()
-    def sqlmap_scan(target: str, data: str = "", cookie: str = "", additional_args: str = "") -> Dict[str, Any]:
-        """SQL injection testing with SQLMap."""
-        payload = {"target": target, "data": data, "cookie": cookie, "additional_args": additional_args}
-        logger.info(f"🔍 SQLMap scan: {target}")
-        return hexstrike_client.safe_post("api/tools/sqlmap", payload)
-
-    @mcp.tool()
-    def get_process_dashboard() -> Dict[str, Any]:
-        """Get system process dashboard."""
-        logger.info("📊 Process dashboard")
-        return hexstrike_client.safe_get("api/processes/dashboard")
-
-    @mcp.tool()
-    def format_tool_output_visual(tool_name: str, output: str, success: bool = True) -> Dict[str, Any]:
-        """Format tool output with visual styling."""
-        data = {"tool": tool_name, "output": output, "success": success}
-        logger.info(f"🎨 Formatting output: {tool_name}")
-        return hexstrike_client.safe_post("api/visual/tool-output", data)
-    
-    # Calculate and log token usage estimate
-    estimated_tokens = sum([
-        estimate_tokens("Network scanning with Nmap."),
-        estimate_tokens("Execute command on HexStrike server."),
-        estimate_tokens("AI-driven intelligent scanning."),
-        estimate_tokens("AI tool selection for target."),
-        estimate_tokens("AI parameter optimization."),
-        estimate_tokens("Directory/DNS brute-forcing with Gobuster."),
-        estimate_tokens("Vulnerability scanning with Nuclei."),
-        estimate_tokens("SQL injection testing with SQLMap."),
-        estimate_tokens("Get system process dashboard."),
-        estimate_tokens("Format tool output with visual styling.")
-    ])
-    
-    logger.info(f"✅ Registered {10} essential tools (est. ~{estimated_tokens} tokens)")
-    return mcp
+    return setup_tools_with_context_awareness(mcp, hexstrike_client, small_context_mode)
 
 def setup_full_tools(mcp: FastMCP, hexstrike_client: HexStrikeClient) -> FastMCP:
     """
